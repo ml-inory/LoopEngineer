@@ -28,9 +28,9 @@ workflow-generator/
 ├── README.md
 ├── skills/
 │   ├── entry/
-│   │   └── SKILL.md
-│   └── hidden/
-│       └── (至少 2-3 个示例技能)
+│       └── SKILL.md
+│       └── hidden/
+│           └── (辅助技能)
 ├── core/
 │   ├── parser.py
 │   └── orchestrator.py
