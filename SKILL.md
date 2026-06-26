@@ -27,7 +27,7 @@ description: 将用户的模糊需求转化为 结构化、确定性、可执行
 workflow-generator/
 ├── README.md
 ├── skills/
-│   ├── entry/
+│   ├── $skill-name/
 │       └── SKILL.md
 │       └── hidden/
 │           └── (辅助技能)
@@ -39,7 +39,7 @@ workflow-generator/
 └── storage/
     └── workflows/
 ```
-- entry应作为SKILL的名称，可询问用户输入，默认使用小写的当前目录名称
+- $skill-name应作为SKILL的名称，可询问用户输入，默认使用小写的当前目录名称
 - 上述的目录结构除了skills以外，其它都是非必需，只是辅助SKILL
 
 ## 需求澄清与共识对齐（Requirement Clarification & Alignment）
