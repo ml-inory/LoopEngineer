@@ -1,71 +1,66 @@
 ---
-description: 将用户的模糊需求转化为可审计、可恢复、可执行的 Agent 工作流协议
+name: loop-engineer
+description: Design auditable, recoverable agent workflows from ambiguous user goals. Use when Codex must turn a request into a structured workflow protocol with requirements, capabilities, DAG steps, gates, retries, rollback, validation, terminal states, generated entry skills, hidden helper skills, or YAML workflow specs.
 ---
 
 # Loop Engineer
 
-## Role
-
-You are a Workflow Architect for agentic systems. Your job is to turn a user's
-goal into a structured workflow protocol that another agent or orchestrator can
-execute with minimal ambiguity.
-
-The output is not only a natural-language plan. It must include a machine-readable
-workflow specification with explicit inputs, outputs, dependencies, gates, retry
-rules, and terminal states.
+Turn a user's goal into a workflow protocol that another agent or orchestrator can execute with minimal ambiguity. Produce both a concise human-facing summary and a machine-readable workflow specification.
 
 ## Core Contract
 
-Loop Engineer must produce one public entry skill and any number of hidden helper
-skills.
+Generate one public entry skill and any number of hidden helper skills when files are requested. The public entry skill is the user-facing interface. Hidden helper skills are implementation details, but keep them auditable in the workflow spec.
 
-The public entry skill is the only skill users need to invoke. Hidden helper
-skills are implementation details, but they must remain auditable in the workflow
-spec.
-
-Default generated structure:
+Use this default layout unless the user asks for a different destination:
 
 ```text
 workflow-generator/
-├── README.md
 ├── skills/
-│   └── <entry-skill>/
+│   └── entry-skill/
 │       ├── SKILL.md
 │       └── hidden/
-│           └── <helper-skill>/
+│           └── helper-skill/
 │               └── SKILL.md
 └── workflows/
-    └── <workflow-name>.yaml
+    └── workflow-name.yaml
 ```
 
-The directory layout may be reduced for small workflows, but every generated
-workflow must include:
+For small workflows, reduce the layout only when the durable artifacts still include:
 
 - one entry `SKILL.md`
-- a workflow specification
-- all referenced helper skill instructions, unless the helper is explicitly
-  marked as externally provided
+- one workflow YAML specification
+- all referenced helper skill instructions, unless a helper is explicitly marked as externally provided
 
-## Operating Modes
+## Workflow Design Process
 
-Classify every user request before designing the workflow.
+1. Classify the request mode.
+2. Build a Requirement Packet.
+3. Inventory required capabilities.
+4. Design the workflow state machine, steps, gates, failure policy, observability, and completion rules.
+5. Generate files when requested.
+6. Validate the generated artifacts against the acceptance checks.
+
+Prefer conservative assumptions for low-risk gaps. Ask the user only when missing information materially affects safety, correctness, cost, credentials, production systems, or external side effects.
+
+## Request Modes
+
+Classify every request before designing the workflow.
 
 | Mode | Use when | Default behavior |
 | --- | --- | --- |
-| `simple` | Goal, inputs, and acceptance are obvious; low risk | Execute with minimal clarification |
-| `guided` | Goal is clear but constraints or acceptance are incomplete | Ask targeted questions, then design |
-| `strict` | High cost, high risk, external side effects, security impact, legal/financial/medical domain, destructive operations, or production changes | Require explicit user confirmation before workflow generation |
+| `simple` | Goal, inputs, and acceptance are obvious; risk is low | Proceed with minimal clarification |
+| `guided` | Goal is clear, but constraints or acceptance are incomplete | Ask targeted questions, then design |
+| `strict` | High cost, high risk, destructive operations, security impact, production changes, or legal/financial/medical domain | Restate the Requirement Packet and require explicit confirmation before generation or side effects |
 
-Do not use a rigid clarification process for every task. Escalate the amount of
-dialogue based on risk and ambiguity.
+In `simple` mode, proceed if the goal, output format, and at least one acceptance check are clear.
+
+In `guided` mode, ask only for missing fields that affect the workflow design.
+
+In `strict` mode, do not generate or execute side-effecting steps until the user confirms the Requirement Packet and required capabilities.
 
 ## Requirement Packet
 
-Before workflow generation, construct a Requirement Packet. If a field is
-unknown, either infer it with low risk and mark it as `assumption`, or ask the
-user if the missing field is material.
-
-Required fields:
+Construct this packet before workflow generation. If a field is unknown, infer it only when low risk and record the inference in `assumptions`; otherwise ask the user.
 
 ```yaml
 requirement:
@@ -88,19 +83,9 @@ requirement:
   open_questions: []
 ```
 
-Clarification rules:
-
-- In `simple` mode, proceed if `goal`, `output.format`, and at least one
-  acceptance check are clear.
-- In `guided` mode, ask only for missing fields that affect workflow design.
-- In `strict` mode, restate the Requirement Packet and wait for user confirmation.
-- If the user says "you decide" or similar, make a conservative assumption and
-  record it unless the decision is high risk.
-
 ## Capability Inventory
 
-Before finalizing a workflow, produce a capability inventory. This inventory is
-part of the workflow spec, not an informal note.
+Include a capability inventory in every workflow spec. Record existing local skills, generated helper skills, external dependencies, credentials, APIs, tools, and missing capabilities.
 
 ```yaml
 capabilities:
@@ -112,18 +97,17 @@ capabilities:
     required: true
 ```
 
-Inventory rules:
+Follow these rules:
 
-- Automatically use existing local skills when discoverable.
-- Ask the user only for capabilities that are missing, require elevated trust, or
-  access external private systems.
-- For generated helper skills, use small focused `SKILL.md` files.
-- For missing optional capabilities, degrade gracefully and record the limitation.
-- Do not silently invent access to APIs, credentials, files, or private services.
+- Use existing local skills when discoverable.
+- Mark generated helper skills as `generate`.
+- Mark unavailable optional capabilities as `missing` and degrade only when acceptable.
+- Ask before relying on private systems, credentials, elevated trust, paid actions, publishing, or production changes.
+- Do not invent API access, credentials, files, tools, or private services.
 
 ## Workflow Spec
 
-Every workflow must be represented as YAML with this shape:
+Represent every workflow as YAML with this shape:
 
 ```yaml
 workflow:
@@ -163,42 +147,7 @@ outputs:
     validation: []
 ```
 
-### Step Schema
-
-Each step must be small enough to be performed by one focused agent call, one
-tool call, or one deterministic script.
-
-```yaml
-steps:
-  - id: ""
-    kind: "agent | tool | script | gate | synthesis"
-    skill: ""
-    description: ""
-    depends_on: []
-    parallel_group: null
-    inputs: []
-    outputs: []
-    timeout_seconds: null
-    retry:
-      max_attempts: 0
-      retry_on: []
-      backoff: "none | fixed | exponential"
-    on_failure:
-      action: "fail | retry | rollback | ask_user | degrade"
-      target_step: null
-    visibility: "hidden | summarized | user_visible"
-```
-
-Step design rules:
-
-- Use `depends_on` for all ordering constraints.
-- Use `parallel_group` only when steps are independent and can run concurrently.
-- Do not create ambiguous parallelism. Every join must be represented by a gate or
-  synthesis step.
-- Hidden steps are hidden from casual user-facing summaries, but they are still
-  included in the workflow spec.
-
-## State Machine
+### Required State Machine
 
 Every workflow must use these states:
 
@@ -257,50 +206,52 @@ state_machine:
       when: "required external input, permission, or credential is unavailable"
 ```
 
+### Steps
+
+Make each step small enough for one focused agent call, one tool call, or one deterministic script.
+
+```yaml
+steps:
+  - id: ""
+    kind: "agent | tool | script | gate | synthesis"
+    skill: ""
+    description: ""
+    depends_on: []
+    parallel_group: null
+    inputs: []
+    outputs: []
+    timeout_seconds: null
+    retry:
+      max_attempts: 0
+      retry_on: []
+      backoff: "none | fixed | exponential"
+    on_failure:
+      action: "fail | retry | rollback | ask_user | degrade"
+      target_step: null
+    visibility: "hidden | summarized | user_visible"
+```
+
+Follow these rules:
+
+- Use `depends_on` for all ordering constraints.
+- Use `parallel_group` only for independent work.
+- Add a gate or synthesis step to join parallel work.
+- Do not hide required dependencies in prose.
+- Do not create retry loops without `max_attempts`.
+
 ## Task Type Rules
 
-### Deterministic
+Use `deterministic` for known sequential or DAG pipelines. Require explicit dependencies, deterministic validation checks, and rollback or fail behavior for side effects.
 
-Use a sequential or DAG pipeline when the path is known.
+Use `exploratory` only when multiple credible approaches need comparison. Create 2 to 4 scout steps, give each scout a distinct hypothesis or evaluation angle, add a synthesis join, record scoring criteria, and capture token, time, or cost limits.
 
-Requirements:
+Use `iterative` when quality improves through validation feedback. Include a validation gate, a repair step, `max_attempts`, and a terminal fallback after attempts are exhausted.
 
-- explicit `depends_on`
-- deterministic validation checks
-- rollback or fail behavior for side-effecting steps
-
-### Exploratory
-
-Use parallel scouts only when multiple credible approaches need comparison.
-
-Requirements:
-
-- 2 to 4 scout steps
-- each scout has a different hypothesis or evaluation angle
-- a synthesis step joins all scout outputs
-- the synthesis step has explicit scoring criteria
-- token, time, or cost limits are recorded in constraints
-
-### Iterative
-
-Use a repair loop when quality improves through validation feedback.
-
-Requirements:
-
-- validation gate
-- repair step
-- `max_attempts`
-- terminal fallback when attempts are exhausted
-
-### Hybrid
-
-Use hybrid only when the workflow genuinely contains multiple task types. Mark
-each step with the relevant behavior through `kind`, `parallel_group`, gates, and
-retry rules.
+Use `hybrid` only when the workflow genuinely combines multiple task types. Mark the relevant behavior through `kind`, `parallel_group`, gates, and retry rules.
 
 ## Gates
 
-Gates are explicit decision points. They must not be hidden inside prose.
+Make decision points explicit.
 
 ```yaml
 gates:
@@ -313,18 +264,11 @@ gates:
     on_fail: ""
 ```
 
-Use human approval gates for:
+Use human approval gates for destructive file operations, production deployments, paid external actions, messages to third parties, publishing, and sensitive credentials.
 
-- destructive file operations
-- production deployments
-- paid external actions
-- sending messages to third parties
-- publishing content
-- using sensitive credentials
+## Failure Policy
 
-## Failure Strategy
-
-Every workflow must define how failures are handled.
+Define failure handling in every workflow.
 
 ```yaml
 failure_policy:
@@ -335,23 +279,18 @@ failure_policy:
   degraded_output_allowed: false
 ```
 
-Failure categories:
+Classify failures as:
 
-- `recoverable`: transient tool failure, incomplete output, validation mismatch
-- `blocked`: missing credential, missing file, unavailable private system
+- `recoverable`: transient tool failure, incomplete output, or validation mismatch
+- `blocked`: missing credential, missing file, unavailable private system, or unavailable permission
 - `unsafe`: destructive or sensitive action without approval
-- `nonrecoverable`: invalid goal, impossible constraints, exhausted retry budget
+- `nonrecoverable`: invalid goal, impossible constraints, or exhausted retry budget
 
-Rules:
-
-- Retry only recoverable failures.
-- Ask the user only when execution cannot continue safely or correctly.
-- Roll back side effects when rollback is available and required.
-- Stop at `blocked` rather than guessing credentials, permissions, or private data.
+Retry only recoverable failures. Roll back side effects when rollback is available and required. Stop at `blocked` instead of guessing credentials, permissions, or private data.
 
 ## Observability
 
-Every workflow must declare what will be recorded.
+Declare what will be recorded.
 
 ```yaml
 observability:
@@ -364,12 +303,11 @@ observability:
     retention: "workflow-local"
 ```
 
-User-facing progress should summarize milestones, not expose every hidden helper
-detail unless the user asks for debug or audit output.
+Summarize hidden work in normal user-facing progress. Include hidden details in the audit log and workflow spec.
 
 ## Completion
 
-Completion must be tied to acceptance checks, not to agent confidence.
+Tie completion to acceptance checks.
 
 ```yaml
 completion:
@@ -381,9 +319,11 @@ completion:
     include_limitations: true
 ```
 
+Do not mark a workflow as successful unless acceptance checks pass or the user explicitly accepts degraded output.
+
 ## Output Protocol
 
-When asked to design or generate a workflow, respond in this order:
+When designing or generating a workflow, respond in this order:
 
 1. Requirement Packet summary
 2. Capability Inventory
@@ -391,21 +331,12 @@ When asked to design or generate a workflow, respond in this order:
 4. Generated file layout, if files are created
 5. Open questions, only if they block execution
 
-For simple tasks, keep the user-facing summary brief and include the structured
-spec as the durable artifact.
-
-For strict tasks, do not generate or execute side-effecting steps until the user
-confirms the Requirement Packet and required capabilities.
+For simple tasks, keep the user-facing summary brief and include the structured spec as the durable artifact.
 
 ## Prohibited Behavior
 
 - Do not rely on hidden chain-of-thought as the workflow definition.
-- Do not hide required dependencies from the workflow spec.
 - Do not create parallel steps without an explicit join.
-- Do not create retry loops without a maximum attempt count.
-- Do not claim a capability exists unless it is discoverable, generated, or
-  explicitly provided.
-- Do not ask the user for every minor decision when a conservative assumption is
-  low risk and can be recorded.
-- Do not mark a workflow as successful unless its acceptance checks pass or the
-  user explicitly accepts a degraded result.
+- Do not claim a capability exists unless it is discoverable, generated, or explicitly provided.
+- Do not ask for every minor decision when a conservative assumption is low risk and can be recorded.
+- Do not continue side-effecting strict workflows without explicit approval.

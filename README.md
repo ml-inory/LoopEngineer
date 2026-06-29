@@ -1,11 +1,30 @@
-# LoopEngineer
+# Loop Engineer
 
-LoopEngineer is an Agent workflow protocol for turning ambiguous user requests
+Loop Engineer is an agent workflow protocol for turning ambiguous user requests
 into structured, auditable, and recoverable workflows.
 
 The project is centered on [`SKILL.md`](./SKILL.md). That skill defines how an
 agent should clarify requirements, inventory capabilities, design a workflow DAG,
 handle retries and rollback, and decide when user approval is required.
+
+## Install
+
+Install the skill for both Codex and Claude:
+
+```bash
+./install.sh
+```
+
+The installer reads the skill name from `SKILL.md` frontmatter and installs to:
+
+- Codex: `${CODEX_HOME:-$HOME/.codex}/skills/loop-engineer`
+- Claude: `${CLAUDE_HOME:-$HOME/.claude}/skills/loop-engineer`
+
+Codex also receives [`agents/openai.yaml`](./agents/openai.yaml). Restart Codex
+after installation so it can discover the skill. Restart Claude Code if the
+Claude skills directory did not exist when the session started.
+
+You can invoke the skill as `$loop-engineer`.
 
 ## What It Produces
 
@@ -20,15 +39,14 @@ Default layout:
 
 ```text
 workflow-generator/
-├── README.md
 ├── skills/
-│   └── <entry-skill>/
+│   └── entry-skill/
 │       ├── SKILL.md
 │       └── hidden/
-│           └── <helper-skill>/
+│           └── helper-skill/
 │               └── SKILL.md
 └── workflows/
-    └── <workflow-name>.yaml
+    └── workflow-name.yaml
 ```
 
 ## Core Ideas

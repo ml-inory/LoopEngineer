@@ -1,0 +1,7 @@
+interface:
+  display_name: "Loop Engineer"
+  short_description: "Design auditable agent workflows"
+  default_prompt: "Use $loop-engineer to turn this goal into an auditable workflow protocol."
+
+policy:
+  allow_implicit_invocation: true
