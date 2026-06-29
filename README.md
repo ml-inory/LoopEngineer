@@ -24,6 +24,9 @@ Codex also receives [`agents/openai.yaml`](./agents/openai.yaml). Restart Codex
 after installation so it can discover the skill. Restart Claude Code if the
 Claude skills directory did not exist when the session started.
 
+If `grill-me` is not already installed, the installer copies
+[`grill-me.md`](./grill-me.md) into each user skill directory as `grill-me`.
+
 You can invoke the skill as `$loop-engineer`.
 
 ## What It Produces

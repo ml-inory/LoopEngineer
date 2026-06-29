@@ -31,14 +31,28 @@ For small workflows, reduce the layout only when the durable artifacts still inc
 - one workflow YAML specification
 - all referenced helper skill instructions, unless a helper is explicitly marked as externally provided
 
+## Pre-Planning Requirement Alignment
+
+Before entering workflow planning, use `$grill-me` to align requirements with the user.
+
+Follow the `grill-me` protocol before classifying the request mode or designing the workflow:
+
+- Ask one question at a time until the goal, outputs, constraints, acceptance checks, risks, and blocking unknowns are mutually understood.
+- Provide a recommended answer with each question so the user can accept, reject, or refine it quickly.
+- Explore the codebase instead of asking when the answer can be discovered locally.
+- Do not emit the Requirement Packet or Workflow Spec until this alignment is complete, unless the user explicitly asks for a draft with open questions.
+
+If `$grill-me` is not discoverable in the current session, apply the same one-question-at-a-time alignment behavior manually and record `grill-me` as a missing or installable capability in the Capability Inventory.
+
 ## Workflow Design Process
 
-1. Classify the request mode.
-2. Build a Requirement Packet.
-3. Inventory required capabilities.
-4. Design the workflow state machine, steps, gates, failure policy, observability, and completion rules.
-5. Generate files when requested.
-6. Validate the generated artifacts against the acceptance checks.
+1. Complete pre-planning requirement alignment with `$grill-me`.
+2. Classify the request mode.
+3. Build a Requirement Packet.
+4. Inventory required capabilities.
+5. Design the workflow state machine, steps, gates, failure policy, observability, and completion rules.
+6. Generate files when requested.
+7. Validate the generated artifacts against the acceptance checks.
 
 Prefer conservative assumptions for low-risk gaps. Ask the user only when missing information materially affects safety, correctness, cost, credentials, production systems, or external side effects.
 
