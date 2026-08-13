@@ -81,6 +81,8 @@ sync_optional_dir "agents" "$codex_dest"
 sync_optional_dir "assets" "$codex_dest"
 sync_optional_dir "references" "$codex_dest"
 sync_optional_dir "scripts" "$codex_dest"
+sync_optional_dir "hidden" "$codex_dest"
+sync_optional_dir "workflows" "$codex_dest"
 install_grill_me_if_missing "$codex_root" "Codex"
 
 copy_skill_md "$claude_dest"

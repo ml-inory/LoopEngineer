@@ -7,6 +7,13 @@ The project is centered on [`SKILL.md`](./SKILL.md). That skill defines how an
 agent should clarify requirements, inventory capabilities, design a workflow DAG,
 handle retries and rollback, and decide when user approval is required.
 
+Since the `evolution` branch, LoopEngineer also ships a **distill mode**
+(`$loop-engineer distill`): it scans Codex session history, detects repetitive
+work, and distills it into installable, self-evolving workflows under
+`~/Codes/awesome-skills`. See [`REQUIREMENTS.md`](./REQUIREMENTS.md) for the
+aligned design and [`workflows/distill.yaml`](./workflows/distill.yaml) for the
+distiller's own workflow spec.
+
 ## Install
 
 Install the skill for both Codex and Claude:

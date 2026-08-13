@@ -1,0 +1,257 @@
+workflow:
+  schema_version: "1.0"
+  name: distill
+  entry_skill: loop-engineer
+  mode: guided
+  task_type: hybrid
+  visibility: collapsed_by_default
+  requirement:
+    goal: "扫描 Codex 会话历史，鉴别重复性工作，蒸馏为可安装、可演化的 workflow"
+    output:
+      format: "directory"
+      destination: "~/Codes/awesome-skills/<name>/"
+      consumer: "both"
+    constraints:
+      time_budget: "cron 07:00 / 23:00 或手动"
+      human_approval_required: true
+    acceptance:
+      checks:
+        - "候选簇检出（≥2 会话同簇 或 高价值单会话）"
+        - "结构校验通过 + holdout 回溯覆盖率 ≥0.8"
+        - "激活/更新有 commit 与 changelog"
+        - "通知至少 inbox 送达"
+    assumptions:
+      - "数据源 v1 仅 ~/.codex/sessions（Codex）"
+      - "蒸馏产物落 awesome-skills，经 setup.sh --codex 激活"
+      - "低风险新增/纯增量可自动应用，结构性改动需确认"
+    open_questions: []
+  capabilities:
+    - id: loop-engineer
+      purpose: 入口技能与工作流协议
+      source: existing
+      skill_path: SKILL.md
+      required: true
+    - id: grill-me
+      purpose: 需求对齐
+      source: existing
+      skill_path: ../../grill-me.md
+      required: false
+    - id: distill-scan
+      purpose: 会话增量索引与信号提取
+      source: generate
+      skill_path: hidden/distill-scan/SKILL.md
+      required: true
+    - id: distill-cluster
+      purpose: 动作指纹聚类 + LLM 命名筛选
+      source: generate
+      skill_path: hidden/distill-cluster/SKILL.md
+      required: true
+    - id: distill-extract
+      purpose: 起草 workflow 与 SKILL.md
+      source: generate
+      skill_path: hidden/distill-extract/SKILL.md
+      required: true
+    - id: distill-validate
+      purpose: 三层验证
+      source: generate
+      skill_path: hidden/distill-validate/SKILL.md
+      required: true
+    - id: distill-evolve
+      purpose: 增量更新已有 workflow
+      source: generate
+      skill_path: hidden/distill-evolve/SKILL.md
+      required: true
+    - id: distill-notify
+      purpose: 多通道通知
+      source: generate
+      skill_path: hidden/distill-notify/SKILL.md
+      required: true
+    - id: awesome-skills
+      purpose: 蒸馏产物仓库 + setup.sh 安装
+      source: existing
+      skill_path: /home/rzyang/Codes/awesome-skills
+      required: true
+    - id: dingtalk
+      purpose: 手机推送（webhook + 加签）
+      source: external
+      permissions: [network-http]
+      required: false
+  inputs:
+    - id: codex_sessions
+      type: directory
+      required: true
+      source: environment
+      validation: ["~/.codex/sessions 存在"]
+    - id: previous_index
+      type: file
+      required: false
+      source: generated
+      validation: ["state/sessions.json 存在即可增量"]
+  outputs:
+    - id: candidates
+      type: json
+      destination: "state/candidates.json"
+      required: true
+    - id: drafts
+      type: directory
+      destination: "state/drafts/<name>/"
+      required: true
+    - id: applied_workflows
+      type: directory
+      destination: "~/Codes/awesome-skills/<name>/"
+      required: true
+    - id: digests
+      type: file
+      destination: "digests/YYYY-MM-DD.md"
+      required: true
+  state_machine:
+    initial: ready
+    states: [draft, awaiting_user, ready, running, validating, retrying, rolling_back, degraded, blocked, failed, succeeded]
+    terminal: [blocked, failed, succeeded]
+    transitions:
+      - from: ready
+        to: running
+        when: "巡检启动（cron 或手动）"
+      - from: running
+        to: validating
+        when: "扫描与聚类完成，草稿产出"
+      - from: validating
+        to: retrying
+        when: "验证失败且重试预算未耗尽"
+      - from: retrying
+        to: running
+        when: "修复后重新提取/验证"
+      - from: validating
+        to: awaiting_user
+        when: "存在待确认候选或结构性更新"
+      - from: awaiting_user
+        to: running
+        when: "用户在 inbox/digest 确认或驳回"
+      - from: running
+        to: succeeded
+        when: "候选处理完，digest + 通知已落"
+      - from: running
+        to: degraded
+        when: "通知通道失败但 inbox 保底成功"
+      - from: running
+        to: blocked
+        when: "会话目录或 awesome-skills 缺失"
+  steps:
+    - id: scan
+      kind: script
+      skill: distill-scan
+      description: "增量扫描会话，更新索引与信号"
+      depends_on: []
+      inputs: [codex_sessions, previous_index]
+      outputs: [state/sessions.json, state/scan-report.json]
+      retry: {max_attempts: 1, retry_on: ["file-io"], backoff: none}
+      on_failure: {action: fail, target_step: null}
+      visibility: hidden
+    - id: cluster
+      kind: script
+      skill: distill-cluster
+      description: "动作指纹聚类，LLM 命名与 new/update/skip 决策"
+      depends_on: [scan]
+      inputs: [state/sessions.json]
+      outputs: [state/candidates.json, state/cluster-decisions.json]
+      retry: {max_attempts: 1, retry_on: [], backoff: none}
+      on_failure: {action: fail, target_step: null}
+      visibility: hidden
+    - id: extract
+      kind: agent
+      skill: distill-extract
+      description: "起草 SKILL.md 与 workflow YAML"
+      depends_on: [cluster]
+      inputs: [state/cluster-decisions.json, state/cluster-summaries.md]
+      outputs: [state/drafts/<name>/]
+      retry: {max_attempts: 2, retry_on: ["coverage-low"], backoff: fixed}
+      on_failure: {action: retry, target_step: extract}
+      visibility: hidden
+    - id: validate
+      kind: script
+      skill: distill-validate
+      description: "结构校验 + holdout 回溯覆盖率 ≥0.8"
+      depends_on: [extract]
+      inputs: [state/drafts/<name>/]
+      outputs: [state/drafts/<name>/validation.json]
+      retry: {max_attempts: 2, retry_on: ["structural", "coverage-low"], backoff: fixed}
+      on_failure: {action: retry, target_step: extract}
+      visibility: hidden
+    - id: review_gate
+      kind: gate
+      skill: null
+      description: "低风险自动放行；结构性/新增需确认"
+      depends_on: [validate]
+      inputs: []
+      outputs: [decisions]
+      on_failure: {action: ask_user, target_step: null}
+      visibility: user_visible
+    - id: apply
+      kind: script
+      skill: distill-evolve
+      description: "写入 awesome-skills、setup.sh 激活、git commit、changelog"
+      depends_on: [review_gate]
+      inputs: [state/drafts/<name>/]
+      outputs: [~/Codes/awesome-skills/<name>/]
+      retry: {max_attempts: 2, retry_on: ["git-conflict"], backoff: fixed}
+      on_failure: {action: rollback, target_step: null}
+      visibility: hidden
+    - id: notify
+      kind: script
+      skill: distill-notify
+      description: "digest + inbox + 钉钉/Toast/tmux 按环境通知"
+      depends_on: [apply]
+      inputs: [digests]
+      outputs: [digests/inbox.md]
+      retry: {max_attempts: 1, retry_on: [], backoff: none}
+      on_failure: {action: degrade, target_step: null}
+      visibility: summarized
+  gates:
+    - id: candidate_gate
+      kind: synthesis
+      depends_on: [cluster]
+      pass_when: ["同簇 ≥2 会话 或 高价值单会话"]
+      fail_when: ["无候选"]
+      on_pass: "extract"
+      on_fail: "跳过蒸馏，仅写 digest"
+    - id: validation_gate
+      kind: validation
+      depends_on: [validate]
+      pass_when: ["结构校验通过", "holdout 覆盖率 ≥0.8"]
+      fail_when: ["重试预算耗尽"]
+      on_pass: "review_gate"
+      on_fail: "丢弃草稿并通知"
+    - id: approval_gate
+      kind: approval
+      depends_on: [review_gate]
+      pass_when: ["低风险自动放行", "或用户确认"]
+      fail_when: ["用户驳回"]
+      on_pass: "apply"
+      on_fail: "标记 skipped"
+  failure_policy:
+    default_action: fail
+    max_total_attempts: 3
+    rollback_required_for: ["apply"]
+    ask_user_for: ["结构性 workflow 更新", "新 workflow 激活"]
+    degraded_output_allowed: true
+  observability:
+    progress_updates: milestone
+    audit_log:
+      enabled: true
+      include_hidden_steps: true
+    artifacts:
+      record_intermediate_outputs: true
+      retention: "workflow-local"
+  completion:
+    success_when:
+      - "候选处理完（应用或跳过）"
+      - "digest/YYYY-MM-DD.md 已写"
+      - "inbox 至少保底通知"
+    failure_when:
+      - "会话目录缺失（blocked）"
+      - "awesome-skills 仓库缺失（blocked）"
+      - "全部候选验证失败且预算耗尽"
+    final_response:
+      include_artifacts: true
+      include_assumptions: true
+      include_limitations: true
