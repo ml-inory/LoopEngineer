@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -24,6 +25,31 @@ from common import STATE_DIR, cfg_path, ensure_dirs, load_config  # noqa: E402
 
 def _run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=120)
+
+
+def ensure_awesome_repo(cfg: dict[str, str]) -> Path:
+    """确保 awesome-skills 仓库可用：缺失时自动 clone，存在但非 git 仓库时报错。"""
+    awesome = cfg_path(cfg, "AWESOME_SKILLS_DIR", "~/Codes/awesome-skills")
+    if awesome.exists():
+        if not (awesome / ".git").exists():
+            raise RuntimeError(f"{awesome} 已存在但不是 git 仓库，拒绝覆盖；请人工处理")
+        return awesome
+    repo_url = (cfg.get("AWESOME_SKILLS_REPO") or "").strip()
+    if not repo_url:
+        raise RuntimeError("AWESOME_SKILLS_DIR 不存在且未配置 AWESOME_SKILLS_REPO，无法自动 clone")
+    awesome.parent.mkdir(parents=True, exist_ok=True)
+    env = dict(os.environ)
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    r = subprocess.run(
+        ["git", "clone", repo_url, str(awesome)],
+        capture_output=True,
+        text=True,
+        timeout=180,
+        env=env,
+    )
+    if r.returncode != 0:
+        raise RuntimeError(f"自动 clone 失败（{repo_url}）：{r.stderr.strip()[:300]}；请手动 clone 或检查网络/SSH 权限")
+    return awesome
 
 
 def _diff_kind(old_text: str, new_text: str) -> str:
@@ -52,9 +78,10 @@ def main() -> int:
     if not skill_md.exists() or not wf_yaml.exists():
         print(f"error: incomplete draft: {draft}", file=sys.stderr)
         return 1
-    awesome = cfg_path(cfg, "AWESOME_SKILLS_DIR", "~/Codes/awesome-skills")
-    if not awesome.exists() or not (awesome / ".git").exists():
-        print(f"error: awesome-skills repo not found: {awesome}", file=sys.stderr)
+    try:
+        awesome = ensure_awesome_repo(cfg)
+    except RuntimeError as exc:
+        print(f"error: {exc}", file=sys.stderr)
         return 1
 
     target = awesome / name

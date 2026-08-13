@@ -67,7 +67,7 @@ workflow:
       skill_path: hidden/distill-notify/SKILL.md
       required: true
     - id: awesome-skills
-      purpose: 蒸馏产物仓库 + setup.sh 安装
+      purpose: 蒸馏产物仓库 + setup.sh 安装（目录缺失时按 AWESOME_SKILLS_REPO 自动 clone）
       source: existing
       skill_path: /home/rzyang/Codes/awesome-skills
       required: true

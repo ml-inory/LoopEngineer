@@ -13,7 +13,7 @@
 | 决策点 | 结论 |
 |--------|------|
 | 产物形态 | 活的 workflow：先批量蒸馏 v1，之后随新会话增量演化 |
-| 输出位置 | `~/Codes/awesome-skills/<name>/`（SKILL + hidden helpers + workflow YAML），经 `setup.sh --codex` 激活 |
+| 输出位置 | `~/Codes/awesome-skills/<name>/`（SKILL + hidden helpers + workflow YAML），经 `setup.sh --codex` 激活；目录缺失时自动按 `AWESOME_SKILLS_REPO` clone |
 | 触发方式 | cron 每日 07:00 / 23:00 headless 运行 + 用户手动触发 |
 | 自动化边界 | 半自动：自动巡检/聚类/起草；激活前批量确认；纯增量低风险可自动 |
 | 鉴别方式 | 两段式：动作指纹聚类（意图指纹 + 命令/文件/skill + cwd 密度 + 价值信号）→ LLM 命名筛选 |
