@@ -347,6 +347,52 @@ When designing or generating a workflow, respond in this order:
 
 For simple tasks, keep the user-facing summary brief and include the structured spec as the durable artifact.
 
+## Distill 模式（会话蒸馏）
+
+把同类 Codex 会话抽象成可安装、可演化的 workflow。入口：
+
+```text
+$loop-engineer distill
+```
+
+也可由 cron 定时触发（`scripts/install_cron.sh`，每日 07:00 / 23:00）或手动触发。
+
+### 流水线
+
+```text
+scan → cluster → extract → validate → review_gate → apply/evolve → notify
+```
+
+每步的 hidden helper 见 `hidden/distill-{scan,cluster,extract,validate,evolve,notify}/SKILL.md`，
+权威协议见 `workflows/distill.yaml`，确定性脚本在 `scripts/`。
+
+### 核心约定
+
+- **半自动**：自动巡检/聚类/起草；低风险新增与纯增量自动应用；结构性改动与激活需批量确认（`digests/inbox.md`）。
+- **活的 workflow**：命中已有产物的新会话只提炼增量更新，git commit 即审计与回滚点；连续无实质变化标记 stable 降噪。
+- **三层验证**：结构校验 → holdout 回溯覆盖率 ≥0.8 → 激活后影子模式校正。
+- **可插拔信号库**：意图指纹、动作指纹、cwd 密度、价值信号（时长/事件量/resume 代理/跨轮增量）；新增特征只加 extractor。
+- **Token 效率**：只读 `state/` 索引与摘要，禁止读原始会话大文件与二进制产物。
+- **通知**：inbox 保底（SSH 登录钩子展示）+ 钉钉 webhook + 本机 Windows Toast + tmux，按环境可用性自动选择。
+
+### 配置
+
+`config/distill.env`（shell 风格，gitignore；环境变量可覆盖）：
+
+```text
+CODEX_SESSIONS_DIR=~/.codex/sessions
+AWESOME_SKILLS_DIR=~/Codes/awesome-skills
+DINGTALK_WEBHOOK=...
+DINGTALK_SECRET=...
+CLUSTER_MIN_SESSIONS=2
+COVERAGE_THRESHOLD=0.8
+```
+
+### 断点续跑
+
+中断后恢复：读取 `state/sessions.json`（增量索引）与 `state/candidates.json`，从
+`state/drafts/<name>/validation.json` 所在阶段继续，不重放历史对话。
+
 ## Prohibited Behavior
 
 - Do not rely on hidden chain-of-thought as the workflow definition.

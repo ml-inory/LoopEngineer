@@ -7,6 +7,84 @@ The project is centered on [`SKILL.md`](./SKILL.md). That skill defines how an
 agent should clarify requirements, inventory capabilities, design a workflow DAG,
 handle retries and rollback, and decide when user approval is required.
 
+Since the `evolution` branch, LoopEngineer also ships a **distill mode**
+(`$loop-engineer distill`): it scans Codex session history, detects repetitive
+work, and distills it into installable, self-evolving workflows under
+`~/Codes/awesome-skills`. See [`REQUIREMENTS.md`](./REQUIREMENTS.md) for the
+aligned design and [`workflows/distill.yaml`](./workflows/distill.yaml) for the
+distiller's own workflow spec.
+
+## 安装自动蒸馏器
+
+蒸馏器会在每天 07:00 / 23:00 自动巡检 Codex 会话，发现重复性工作后蒸馏成
+workflow 并安装到 `~/Codes/awesome-skills`。手动也可以随时触发。
+
+### 1. 安装入口 skill
+
+```bash
+./install.sh          # 同时安装到 ~/.codex/skills 与 ~/.claude/skills
+```
+
+安装后重启 Codex，使 `$loop-engineer distill` 生效。
+
+### 2. 配置
+
+```bash
+cp config/distill.env.example config/distill.env
+# 编辑 config/distill.env（已被 gitignore，含密钥也安全）
+```
+
+关键配置：
+
+| 键 | 必填 | 说明 |
+|-----|------|------|
+| `CODEX_SESSIONS_DIR` | 是 | Codex 会话目录，默认 `~/.codex/sessions` |
+| `AWESOME_SKILLS_DIR` | 是 | 蒸馏产物仓库路径，默认 `~/Codes/awesome-skills` |
+| `AWESOME_SKILLS_REPO` | 否 | 产物仓库缺失时自动 clone 的地址 |
+| `DINGTALK_WEBHOOK` / `DINGTALK_SECRET` | 否 | 钉钉手机推送（群机器人 + 加签） |
+| `PUSHPLUS_TOKEN` | 否 | PushPlus 备选推送，留空即可 |
+| `CLUSTER_MIN_SESSIONS` / `COVERAGE_THRESHOLD` | 否 | 聚类门槛 / 验证覆盖率阈值 |
+
+### 3. 安装定时任务与登录提示
+
+```bash
+bash scripts/install_cron.sh          # 每日 07:00 / 23:00 headless 巡检
+bash scripts/install_login_hook.sh    # SSH 登录时有待确认项会提示（保底通知）
+```
+
+注意：WSL2 里 cron 只在 WSL 运行时才触发；公司服务器上使用时把仓库同步过去，
+在服务器上重复第 1-3 步即可。
+
+### 4. 手动触发
+
+交互式会话里说 `$loop-engineer distill`，或 headless 执行：
+
+```bash
+codex exec --skip-git-repo-check --dangerously-bypass-approvals-and-sandbox < scripts/cron_prompt.txt
+```
+
+### 5. 验证安装
+
+```bash
+python3 -m pytest tests/              # 全部测试应通过
+python3 scripts/scan_sessions.py      # 建立会话索引
+python3 scripts/cluster_sessions.py   # 生成候选簇
+```
+
+### 工作方式
+
+```text
+scan → cluster → extract → validate → review_gate → apply/evolve → notify
+```
+
+- 纯新增 / 纯增量的低风险更新自动应用；结构性改动与新 workflow 激活写入
+  `digests/inbox.md` 等你确认（登录钩子会自动提示）；
+- 通知通道：inbox 保底 + 钉钉（手机）+ Windows Toast（本机 WSL）+ tmux，
+  按环境可用性自动选择；
+- 产物按名字写入 awesome-skills（`skills/<name>/SKILL.md` + `workflows/<name>.yaml`），
+  经 `setup.sh --codex` 激活，每次更新独立 commit 可回滚；
+- 密钥只存在 gitignore 的 `config/distill.env`，不会进入 git 历史。
+
 ## Install
 
 Install the skill for both Codex and Claude:

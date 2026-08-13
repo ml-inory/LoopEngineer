@@ -1,0 +1,5 @@
+{"timestamp":"2026-08-01T02:49:50.000Z","type":"session_meta","payload":{"session_id":"test-session-a","cwd":"/home/rzyang/Codes/Magnetar","originator":"codex-tui","model_provider":"deepseek"}}
+{"timestamp":"2026-08-01T02:50:00.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"转换 mobilenet 模型为 AXMODEL"}]}}
+{"timestamp":"2026-08-01T02:50:10.000Z","type":"response_item","payload":{"type":"function_call","name":"exec_command","arguments":"{\"cmd\": \"pulsar2 build --config config.yaml\"}"}}
+{"timestamp":"2026-08-01T02:50:20.000Z","type":"response_item","payload":{"type":"custom_tool_call","name":"apply_patch","input":"*** Begin Patch\n*** Add File: magnetar/errors.py\n+pass\n*** End Patch"}}
+{"timestamp":"2026-08-01T02:50:30.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"测试一下"}]}}
