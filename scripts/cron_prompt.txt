@@ -3,6 +3,7 @@
 1. 运行 scripts/scan_sessions.py（增量扫描）并读取 state/scan-report.json；
 2. 运行 scripts/cluster_sessions.py 生成候选簇，读取 state/candidates.json 与 state/cluster-summaries.md；
 3. 有候选簇或高价值单会话时，按 hidden/distill-cluster 规则命名筛选，再按 hidden/distill-extract 起草；
+   - 候选 `existing_hits` 命中已有 workflow 时：`in_awesome=true` → 同名 update；`in_awesome=false` → skip，禁止 new 或另起新名；
 4. 按 hidden/distill-validate 三层验证（结构 + holdout≥80%）；
 5. 纯新增/纯增量且验证通过 → scripts/apply_workflow.py --auto 自动应用；结构性改动或需用户判断 → 写入 digests/inbox.md 待确认；
 6. 有候选/更新落地时调用 scripts/notify.py 通知（钉钉/本机 Toast/tmux 按环境可用）；无事则只在当日 digest 追加一行；

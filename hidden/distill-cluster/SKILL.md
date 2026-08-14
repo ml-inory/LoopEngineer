@@ -28,3 +28,10 @@ description: 基于动作指纹把会话聚成候选簇，LLM 命名并决定 ne
 - 簇名用小写连字符（如 `ax-model-convert`）；
 - 拿不准的一律 `skip` 并写一句原因，不硬蒸；
 - 同簇会话数 < 2 且非高价值 → `skip`。
+- **`existing_hits` 是硬约束**（脚本已从 awesome-skills、Codex/Claude 已安装 skill、
+  以及会话文件反推的 workflow 引用算出）：
+  - `in_awesome=true` → `update`，名字必须与已有 workflow 完全一致；
+  - `in_awesome=false`（项目内 workflow / 已安装 skill）→ `skip`，禁止 `new`，
+    禁止另起新名重复蒸馏；
+  - 任何情况下不得给命中已有 workflow 的候选起新名字。
+- 高价值单会话命中 `existing_hits` 时同样按上一条处理，不因“信息量大”就重复蒸。

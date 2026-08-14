@@ -17,6 +17,7 @@ workflow:
     acceptance:
       checks:
         - "候选簇检出（≥2 会话同簇 或 高价值单会话）"
+        - "命中已有 workflow/skill 的候选不产生新副本（update 或 skip）"
         - "结构校验通过 + holdout 回溯覆盖率 ≥0.8"
         - "激活/更新有 commit 与 changelog"
         - "通知至少 inbox 送达"
@@ -150,7 +151,7 @@ workflow:
     - id: cluster
       kind: script
       skill: distill-cluster
-      description: "动作指纹聚类，LLM 命名与 new/update/skip 决策"
+      description: "动作指纹聚类，识别已有 workflow 命中，LLM 命名与 new/update/skip 决策"
       depends_on: [scan]
       inputs: [state/sessions.json]
       outputs: [state/candidates.json, state/cluster-decisions.json]
