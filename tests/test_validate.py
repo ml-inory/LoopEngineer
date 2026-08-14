@@ -8,6 +8,11 @@ def _write_draft(tmp_path, name, steps=None, states=None):
     draft = tmp_path / name
     (draft / "skills" / name).mkdir(parents=True)
     (draft / "workflows").mkdir(parents=True)
+    (draft / "README.md").write_text(
+        f"# {name}\n\n测试 workflow。\n\n## 用法\n\n`$loop-engineer {name}`\n\n"
+        "## 安装与更新\n\nbash setup.sh --codex\n\n## 维护\n\n走蒸馏 update 流程。\n",
+        encoding="utf-8",
+    )
     (draft / "skills" / name / "SKILL.md").write_text(
         f"---\nname: {name}\ndescription: test workflow\n---\n\n# {name}\n", encoding="utf-8"
     )
@@ -56,6 +61,21 @@ def test_structural_missing_states(tmp_path):
     draft = _write_draft(tmp_path, "demo2", states=["draft", "running"])
     errors = structural_checks(draft)
     assert any("state_machine" in e for e in errors)
+
+
+def test_structural_missing_readme(tmp_path):
+    draft = _write_draft(tmp_path, "demo-readme-missing")
+    (draft / "README.md").unlink()
+    errors = structural_checks(draft)
+    assert any("README.md" in e for e in errors)
+
+
+def test_structural_readme_missing_section(tmp_path):
+    draft = _write_draft(tmp_path, "demo-readme-section")
+    text = (draft / "README.md").read_text(encoding="utf-8").replace("## 维护", "## 维护缺了")
+    (draft / "README.md").write_text(text, encoding="utf-8")
+    errors = structural_checks(draft)
+    assert any("README.md missing section: ## 维护" in e for e in errors)
 
 
 def test_coverage_matches_workflow(tmp_path):

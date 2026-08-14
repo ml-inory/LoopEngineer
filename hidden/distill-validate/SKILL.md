@@ -17,7 +17,7 @@ python3 scripts/validate_workflow.py --draft state/drafts/<name> [--holdout 2]
 
 ## 门槛
 
-1. **结构校验**：YAML 可解析、状态机完整（11 态 + 终态）、steps/gates/failure_policy/completion/observability 齐备、SKILL.md frontmatter 匹配；
+1. **结构校验**：YAML 可解析、状态机完整（11 态 + 终态）、steps/gates/failure_policy/completion/observability 齐备、SKILL.md frontmatter 匹配、**README.md 存在且含 `# <name>`、`## 用法`、`## 安装与更新`、`## 维护`**；
 2. **回溯覆盖率**：留出 holdout 会话，其动作类别（explore/edit/test/fix/commit/ask/validate/synthesize）被 workflow 文本覆盖的比例 ≥ 阈值（默认 0.8）。
 
 ## 失败处理

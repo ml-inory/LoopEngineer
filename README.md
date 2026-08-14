@@ -81,8 +81,8 @@ scan → cluster → extract → validate → review_gate → apply/evolve → n
   `digests/inbox.md` 等你确认（登录钩子会自动提示）；
 - 通知通道：inbox 保底 + 钉钉（手机）+ Windows Toast（本机 WSL）+ tmux，
   按环境可用性自动选择；
-- 产物按名字写入 awesome-skills（`skills/<name>/SKILL.md` + `workflows/<name>.yaml`），
-  经 `setup.sh --codex` 激活，每次更新独立 commit 可回滚；
+- 产物按名字写入 awesome-skills（`skills/<name>/SKILL.md` + `workflows/<name>.yaml`
+  + 给人看的 `README.md`），经 `setup.sh --codex` 激活，每次更新独立 commit 可回滚；
 - 密钥只存在 gitignore 的 `config/distill.env`，不会进入 git 历史。
 
 ## Install
@@ -114,12 +114,14 @@ A generated workflow should contain:
 - one public entry skill
 - optional hidden helper skills
 - one workflow YAML spec
+- one human-readable README.md
 - explicit inputs, outputs, gates, dependencies, and failure policy
 
 Default layout:
 
 ```text
 workflow-generator/
+├── README.md
 ├── skills/
 │   └── entry-skill/
 │       ├── SKILL.md

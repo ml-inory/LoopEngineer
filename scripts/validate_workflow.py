@@ -24,6 +24,7 @@ REQUIRED_STATES = {
     "rolling_back", "degraded", "blocked", "failed", "succeeded",
 }
 TERMINAL = {"blocked", "failed", "succeeded"}
+README_REQUIRED_SECTIONS = ("## 用法", "## 安装与更新", "## 维护")
 
 CATEGORY_KEYWORDS = {
     "explore": ["read", "search", "scan", "explore", "inspect", "查询", "探测", "检查"],
@@ -42,12 +43,23 @@ def structural_checks(draft: Path) -> list[str]:
     name = draft.name
     skill_md = draft / "skills" / name / "SKILL.md"
     wf_yaml = draft / "workflows" / f"{name}.yaml"
+    readme = draft / "README.md"
     if not skill_md.exists():
         errors.append(f"missing entry skill: {skill_md}")
     if not wf_yaml.exists():
         errors.append(f"missing workflow yaml: {wf_yaml}")
+    if not readme.exists():
+        errors.append(f"missing human-readable README.md: {readme}")
     if errors:
         return errors
+
+    readme_text = readme.read_text(encoding="utf-8")
+    if not re.search(rf"^#\s+{re.escape(name)}\s*$", readme_text, re.MULTILINE):
+        errors.append(f"README.md missing title `# {name}`")
+    for section in README_REQUIRED_SECTIONS:
+        label = section.removeprefix("## ").strip()
+        if not re.search(rf"^##\s+{re.escape(label)}\s*$", readme_text, re.MULTILINE):
+            errors.append(f"README.md missing section: {section}")
 
     text = skill_md.read_text(encoding="utf-8")
     m = re.search(r"^name:\s*([a-z0-9-]+)\s*$", text, re.MULTILINE)

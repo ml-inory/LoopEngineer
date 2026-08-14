@@ -76,7 +76,8 @@ def main() -> int:
     name = draft.name
     skill_md = draft / "skills" / name / "SKILL.md"
     wf_yaml = draft / "workflows" / f"{name}.yaml"
-    if not skill_md.exists() or not wf_yaml.exists():
+    readme = draft / "README.md"
+    if not skill_md.exists() or not wf_yaml.exists() or not readme.exists():
         print(f"error: incomplete draft: {draft}", file=sys.stderr)
         return 1
     try:

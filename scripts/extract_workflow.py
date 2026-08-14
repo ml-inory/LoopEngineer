@@ -4,6 +4,7 @@
 输出：state/drafts/<name>/
   - skills/<name>/SKILL.md      入口 skill 模板（Agent 填充）
   - workflows/<name>.yaml       标准 LoopEngineer spec 模板（Agent 填充）
+  - README.md                   给人看的说明（Agent 填充）
   - session_summaries.md        该簇会话的紧凑摘要
 """
 
@@ -119,6 +120,55 @@ WORKFLOW_TEMPLATE = """workflow:
 """
 
 
+README_TEMPLATE = """# {name}
+
+{description}
+
+> 本 workflow 由 LoopEngineer 从 {count} 个同类 Codex 会话中蒸馏生成（{date}）。
+> 权威协议见 `workflows/{name}.yaml`；Agent 执行入口见 `skills/{name}/SKILL.md`。
+
+## 这是什么
+
+<!-- 给人类看的用途说明：解决什么问题、什么时候用、什么时候不该用 -->
+
+## 用法
+
+<!-- 怎么触发/调用：入口 skill、需要的输入、典型示例 -->
+
+## 输入与输出
+
+| 输入 | 说明 |
+|------|------|
+|      |      |
+
+| 输出 | 位置 |
+|------|------|
+|      |      |
+
+## 安装与更新
+
+```bash
+# 安装/更新到 Codex
+bash <awesome-skills 仓库>/setup.sh --codex
+# 或 Claude Code
+bash <awesome-skills 仓库>/setup.sh --claude
+```
+
+## 目录结构
+
+```text
+skills/{name}/SKILL.md      Agent 执行入口
+workflows/{name}.yaml       权威 workflow 协议（状态机/步骤/门禁/失败策略）
+README.md                   本说明（给人看）
+CHANGELOG.md                变更日志（apply 时自动追加）
+```
+
+## 维护
+
+<!-- 更新方式：走 LoopEngineer 蒸馏 update 流程；改动需同步 SKILL.md 与 YAML；落地自动写 CHANGELOG -->
+"""
+
+
 def slugify(name: str) -> str:
     return re.sub(r"[^a-z0-9-]+", "-", name.strip().lower()).strip("-") or "untitled"
 
@@ -192,6 +242,10 @@ def main() -> int:
         encoding="utf-8",
     )
     (wf_dir / f"{name}.yaml").write_text(WORKFLOW_TEMPLATE.format(name=name), encoding="utf-8")
+    (draft / "README.md").write_text(
+        README_TEMPLATE.format(name=name, description=args.description or f"由 {count} 个同类会话蒸馏的工作流", count=count, date=date.today().isoformat()),
+        encoding="utf-8",
+    )
 
     lines = [f"# {name} 蒸馏素材（{count} 会话）", ""]
     for sid in member_ids:

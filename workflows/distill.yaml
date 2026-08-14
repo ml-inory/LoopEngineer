@@ -19,6 +19,7 @@ workflow:
         - "候选簇检出（≥2 会话同簇 或 高价值单会话）"
         - "命中已有 workflow/skill 的候选不产生新副本（update 或 skip）"
         - "结构校验通过 + holdout 回溯覆盖率 ≥0.8"
+        - "产物目录含给人看的 README.md（用法 / 安装与更新 / 维护）"
         - "激活/更新有 commit 与 changelog"
         - "通知至少 inbox 送达"
     assumptions:

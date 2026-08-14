@@ -1,6 +1,6 @@
 # LoopEngineer distill 模式：需求包与设计定稿
 
-本文件是 2026-08-14 需求对齐（grill-me）后的权威存档，对应 `evolution` 分支实现。
+本文件是 2026-08-14 需求对齐（grill-me）后的权威存档，对应 `main` 分支实现。
 
 ## 目标
 
@@ -12,8 +12,8 @@
 
 | 决策点 | 结论 |
 |--------|------|
-| 产物形态 | 活的 workflow：先批量蒸馏 v1，之后随新会话增量演化 |
-| 输出位置 | `~/Codes/awesome-skills/<name>/`（SKILL + hidden helpers + workflow YAML），经 `setup.sh --codex` 激活；目录缺失时自动按 `AWESOME_SKILLS_REPO` clone |
+| 产物形态 | 活的 workflow：先批量蒸馏 v1，之后随新会话增量演化；每个产物目录含给人看的 README.md |
+| 输出位置 | `~/Codes/awesome-skills/<name>/`（SKILL + hidden helpers + workflow YAML + README.md + CHANGELOG.md），经 `setup.sh --codex` 激活；目录缺失时自动按 `AWESOME_SKILLS_REPO` clone |
 | 触发方式 | cron 每日 07:00 / 23:00 headless 运行 + 用户手动触发 |
 | 自动化边界 | 半自动：自动巡检/聚类/起草；激活前批量确认；纯增量低风险可自动 |
 | 鉴别方式 | 两段式：动作指纹聚类（意图指纹 + 命令/文件/skill + cwd 密度 + 价值信号）→ LLM 命名筛选 |
@@ -30,7 +30,7 @@
 
 1. 首次扫描能建立全量会话索引，之后增量识别新增/变长会话；
 2. 候选簇检出合理（Magnetar 18 会话、moon-bridge 9 会话等真实簇可被识别）；
-3. 蒸馏产物通过结构校验 + holdout ≥80% 回溯；
+3. 蒸馏产物目录含给人看的 README.md（`# <name>` + 用法 / 安装与更新 / 维护），并通过结构校验 + holdout ≥80% 回溯；
 4. 低风险更新自动落地并生成 changelog，结构性更新需确认；
 5. 通知在四种通道按环境可用性送达，钉钉消息带加签；
 6. 全流程可离线 dry-run 验证，不产生外部副作用。
