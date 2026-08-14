@@ -21,6 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import STATE_DIR, cfg_path, ensure_dirs, load_config  # noqa: E402
+from cluster_sessions import existing_workflows  # noqa: E402
 
 
 def _run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess:
@@ -102,6 +103,17 @@ def main() -> int:
             kind = "additive"
     else:
         kind = "new"
+
+    if kind == "new":
+        known = existing_workflows(awesome)
+        hit = known.get(name)
+        if hit and not hit["in_awesome"]:
+            print(
+                f"error: {name} 命中 awesome-skills 之外的已有 workflow/skill（{hit['sources'][0]}）；"
+                "禁止重复蒸馏为 new，应 update 或 skip",
+                file=sys.stderr,
+            )
+            return 2
 
     if target.exists():
         shutil.rmtree(target)

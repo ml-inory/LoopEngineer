@@ -32,4 +32,6 @@ python3 scripts/extract_workflow.py --cluster-id c1 --name <name> --description 
 
 - 每阶段在会话摘要里有据可依才写，禁止编造步骤；
 - 经验约定是蒸馏产物区别于普通计划的灵魂，必须写；
-- 产物必须可解释：读完 SKILL.md 能重建会话的做事顺序。
+- 产物必须可解释：读完 SKILL.md 能重建会话的做事顺序；
+- 候选带 `existing_hits` 时禁止新建：`in_awesome=true` 才允许用同名做 update，
+  `in_awesome=false` 直接 skip，`extract_workflow.py` 会拒绝违反该规则的调用。

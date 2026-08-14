@@ -15,6 +15,9 @@ description: 蒸馏结果的多通道通知：inbox 保底 + 钉钉/Toast/tmux �
 python3 scripts/notify.py --title "蒸馏巡检" --message "<一句话结论>" --digest "digests/2026-08-14.md"
 ```
 
+通知正文会自动附带当天新增 workflow 的说明（从 `state/applied.json` 找到
+`kind=new` 的产物，读取其 `SKILL.md` frontmatter `description`），无需手动传入。
+
 ## 通知时机
 
 - **有候选待确认** 或 **有 workflow 更新落地** → 通知；

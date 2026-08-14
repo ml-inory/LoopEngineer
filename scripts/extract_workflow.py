@@ -143,6 +143,37 @@ def main() -> int:
         return 1
 
     name = slugify(args.name)
+    source = cluster or single
+    hits = source.get("existing_hits", [])
+    if hits:
+        hit_names = {h["name"] for h in hits}
+        if name not in hit_names:
+            print(
+                f"error: 候选命中已有 workflow（{', '.join(sorted(hit_names))}），不能另起新名 {name}；"
+                "更新时请使用 --name <已有名>，否则应 skip",
+                file=sys.stderr,
+            )
+            return 2
+        if not any(h["in_awesome"] for h in hits):
+            print(
+                "error: 候选命中项目/已安装目录里的已有 workflow，不在 awesome-skills，"
+                "不应重复蒸馏到 awesome-skills；应 skip",
+                file=sys.stderr,
+            )
+            return 2
+
+    dec_file = STATE_DIR / "cluster-decisions.json"
+    if dec_file.exists() and hits:
+        decisions = json.loads(dec_file.read_text(encoding="utf-8")).get("decisions", [])
+        for d in decisions:
+            if d.get("cluster_id") == args.cluster_id and d.get("action") == "new":
+                print(
+                    f"error: {args.cluster_id} 命中已有 workflow，cluster-decisions.json 却标记为 new；"
+                    "请改为 update 或 skip",
+                    file=sys.stderr,
+                )
+                return 2
+
     count = cluster["count"] if cluster else 1
     sessions_file = STATE_DIR / "sessions.json"
     sessions = json.loads(sessions_file.read_text(encoding="utf-8")).get("sessions", {}) if sessions_file.exists() else {}

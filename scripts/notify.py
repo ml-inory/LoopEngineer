@@ -12,6 +12,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -22,7 +23,7 @@ from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import DIGEST_DIR, REPO_ROOT, ensure_dirs, load_config  # noqa: E402
+from common import DIGEST_DIR, REPO_ROOT, STATE_DIR, ensure_dirs, load_config  # noqa: E402
 
 
 def dingtalk_sign(webhook: str, secret: str) -> str:
@@ -48,6 +49,57 @@ def send_dingtalk(webhook: str, secret: str, text: str, dry_run: bool = False) -
     except Exception as exc:
         print(f"[warn] dingtalk failed: {exc}", file=sys.stderr)
         return False
+
+
+def skill_description(path: str | None, name: str) -> str:
+    """读取 workflow 的入口 SKILL.md frontmatter description。"""
+    if not path:
+        return ""
+    candidates = [Path(path) / "skills" / name / "SKILL.md", Path(path) / "SKILL.md"]
+    for skill_md in candidates:
+        if not skill_md.exists():
+            continue
+        try:
+            text = skill_md.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        match = re.search(r"(?m)^description:\s*(.+?)\s*$", text)
+        if match:
+            return match.group(1).strip().strip("\"'")
+        for line in text.splitlines():
+            line = line.strip()
+            if line and not line.startswith(("#", "---")):
+                return line[:200]
+    return ""
+
+
+def applied_workflow_descriptions(today: str | None = None) -> list[tuple[str, str]]:
+    """从 state/applied.json 收集当天新增 workflow 的名称与功能说明。"""
+    today = today or datetime.now().strftime("%Y-%m-%d")
+    applied_file = STATE_DIR / "applied.json"
+    if not applied_file.exists():
+        return []
+    try:
+        data = json.loads(applied_file.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    result: list[tuple[str, str]] = []
+    for name, info in (data.get("workflows") or {}).items():
+        if info.get("kind") != "new" or info.get("applied_at") != today:
+            continue
+        desc = skill_description(info.get("path"), name)
+        if desc:
+            result.append((name, desc))
+    return result
+
+
+def workflow_details_text(workflows: list[tuple[str, str]]) -> str:
+    """把新增 workflow 说明拼成钉钉/多通道可读的段落。"""
+    if not workflows:
+        return ""
+    lines = ["", "新增 workflow："]
+    lines.extend(f"- {name}：{desc}" for name, desc in workflows)
+    return "\n".join(lines)
 
 
 def write_inbox(title: str, message: str, digest: str | None, dry_run: bool = False) -> Path:
@@ -119,17 +171,20 @@ def main() -> int:
     args = ap.parse_args()
     cfg = load_config()
 
+    applied = applied_workflow_descriptions()
+    details = workflow_details_text(applied)
+    message = args.message if "新增 workflow" in args.message else args.message + details
     results: list[bool] = []
     if "inbox" in args.channels:
-        write_inbox(args.title, args.message, args.digest, args.dry_run)
+        write_inbox(args.title, message, args.digest, args.dry_run)
     if "dingtalk" in args.channels and cfg.get("DINGTALK_WEBHOOK") and cfg.get("DINGTALK_SECRET"):
-        results.append(send_dingtalk(cfg["DINGTALK_WEBHOOK"], cfg["DINGTALK_SECRET"], f"{args.title}\n{args.message}", args.dry_run))
+        results.append(send_dingtalk(cfg["DINGTALK_WEBHOOK"], cfg["DINGTALK_SECRET"], f"{args.title}\n{message}", args.dry_run))
     if "toast" in args.channels:
-        r = send_toast(args.title, args.message, args.dry_run)
+        r = send_toast(args.title, message, args.dry_run)
         if r is not None:
             results.append(r)
     if "tmux" in args.channels:
-        r = send_tmux(f"{args.title}: {args.message[:80]}", args.dry_run)
+        r = send_tmux(f"{args.title}: {message[:80]}", args.dry_run)
         if r is not None:
             results.append(r)
     return 0 if all(results) else 1
