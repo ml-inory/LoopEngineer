@@ -22,8 +22,10 @@ workflow 并安装到 `~/Codes/awesome-skills`。手动也可以随时触发。
 ### 1. 安装入口 skill
 
 ```bash
-./install.sh          # 同时安装到 ~/.codex/skills 与 ~/.claude/skills
+./install.sh          # 安装到 Codex/Claude，并顺手装 distill 定时任务与登录提示
 ```
+
+`./install.sh --skip-distill` 可只装 skill，不碰 crontab 与 `~/.bashrc`。
 
 安装后重启 Codex，使 `$loop-engineer distill` 生效。
 
@@ -45,12 +47,16 @@ cp config/distill.env.example config/distill.env
 | `PUSHPLUS_TOKEN` | 否 | PushPlus 备选推送，留空即可 |
 | `CLUSTER_MIN_SESSIONS` / `COVERAGE_THRESHOLD` | 否 | 聚类门槛 / 验证覆盖率阈值 |
 
-### 3. 安装定时任务与登录提示
+### 3. 定时任务与登录提示
+
+`install.sh` 会自动执行以下两个脚本，无需再手动安装：
 
 ```bash
-bash scripts/install_cron.sh          # 每日 07:00 / 23:00 headless 巡检
+bash scripts/install_cron.sh          # 每日 07:00 / 23:00 headless 巡检（重复执行幂等）
 bash scripts/install_login_hook.sh    # SSH 登录时有待确认项会提示（保底通知）
 ```
+
+上面两条命令仅在需要手动重装/修复时运行。
 
 注意：WSL2 里 cron 只在 WSL 运行时才触发；公司服务器上使用时把仓库同步过去，
 在服务器上重复第 1-3 步即可。
@@ -106,6 +112,9 @@ If `grill-me` is not already installed, the installer copies
 [`grill-me.md`](./grill-me.md) into each user skill directory as `grill-me`.
 
 You can invoke the skill as `$loop-engineer`.
+
+When run from the repo, `./install.sh` also wires up the distill cron jobs and
+SSH login reminder; use `./install.sh --skip-distill` to install the skill only.
 
 ## What It Produces
 

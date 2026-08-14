@@ -5,6 +5,19 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 skill_file="$script_dir/SKILL.md"
 grill_me_file="$script_dir/grill-me.md"
 
+skip_distill=0
+case "${1:-}" in
+  --skip-distill)
+    skip_distill=1
+    ;;
+  "")
+    ;;
+  *)
+    echo "usage: $0 [--skip-distill]" >&2
+    exit 2
+    ;;
+esac
+
 if [[ ! -f "$skill_file" ]]; then
   echo "error: SKILL.md not found next to install.sh" >&2
   exit 1
@@ -90,6 +103,26 @@ sync_optional_dir "assets" "$claude_dest"
 sync_optional_dir "references" "$claude_dest"
 sync_optional_dir "scripts" "$claude_dest"
 install_grill_me_if_missing "$claude_root" "Claude"
+
+install_distill_deps() {
+  echo "Installing distill dependencies..."
+  if command -v crontab >/dev/null 2>&1; then
+    bash "$script_dir/scripts/install_cron.sh" \
+      || echo "warning: distill cron install failed; run scripts/install_cron.sh manually" >&2
+  else
+    echo "warning: crontab not found; skipped distill cron" >&2
+  fi
+  if [[ -w "$HOME" && -d "$HOME" ]]; then
+    bash "$script_dir/scripts/install_login_hook.sh" \
+      || echo "warning: distill login hook install failed; run scripts/install_login_hook.sh manually" >&2
+  else
+    echo "warning: HOME not writable; skipped distill login hook" >&2
+  fi
+}
+
+if [[ "$skip_distill" -eq 0 ]]; then
+  install_distill_deps
+fi
 
 echo "Installed $skill_name for Codex:  $codex_dest"
 echo "Installed $skill_name for Claude: $claude_dest"
